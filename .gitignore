@@ -1,0 +1,6 @@
+src/config.erl
+_build/**
+_checkouts/**
+rebar.lock
+.envrc
+*.img
