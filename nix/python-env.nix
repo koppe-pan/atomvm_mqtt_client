@@ -1,4 +1,4 @@
-{ pkgs, ...}:
+{ pkgs, stdenv, ...}:
 
 let
   mach-nix = import (builtins.fetchGit {
@@ -11,6 +11,19 @@ let
   #        hash = "sha256-idbOzuZol39dT2HK62+uMM+uLVqYDBLjgpw7CVDG12I=";
   #      };
 in
-  mach-nix.mkPython {
+stdenv.mkDerivation rec {
+  name = "python-for-esp-idf";
+  src = mach-nix.mkPython {
     requirements = builtins.readFile ./requirements.txt;
-  }
+  };
+  dontUnpack = true;
+  dontConfigure = true;
+  dontBuild = true;
+  installPhase = ''
+    mkdir -p $out/bin
+    mkdir -p $out/include
+    mkdir -p $out/lib
+    cp -avr $src/* $out/
+  '';
+
+}

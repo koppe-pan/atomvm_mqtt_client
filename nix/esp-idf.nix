@@ -7,7 +7,6 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ pkgs.makeWrapper ];
 
   buildInputs = with pkgs; [
-    (callPackage ./xtensa-esp-32-elf.nix {})
     ninja
     cmake
     ccache
