@@ -49,13 +49,12 @@ stdenv.mkDerivation rec {
     mkdir -p $out/lib/src/platforms/esp32/components/atomvm_mqtt_client
     cp -avr ${atomvm_mqtt_client}/* $out/lib/src/platforms/esp32/components/atomvm_mqtt_client/
 
-    #mkdir -p $out/lib/src/platforms/esp32/components/rc522
-    #rm -rf $out/lib/src/platforms/esp32/components/rc522/*
-    #cp -avr ${../../rc522}/* $out/lib/src/platforms/esp32/components/rc522/
-    #cp -avr ${rc522}/* $out/lib/src/platforms/esp32/components/rc522/
+    mkdir -p $out/lib/src/platforms/esp32/components/rc522
+    rm -rf $out/lib/src/platforms/esp32/components/rc522/*
+    cp -avr ${../../rc522}/* $out/lib/src/platforms/esp32/components/rc522/
 
-    #mkdir -p $out/lib/src/platforms/esp32/components/atomvm_rfid
-    #cp -avr ${../../atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
+    mkdir -p $out/lib/src/platforms/esp32/components/atomvm_rfid
+    cp -avr ${../../atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
     #cp -avr ${atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
   '';
 

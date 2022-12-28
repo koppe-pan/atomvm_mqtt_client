@@ -19,6 +19,14 @@
 -export([start/0]).
 
 start() ->
+
+    RFIDConfig = #{
+        rfid_reading_filter => [serial_nu],
+        rfid_reading_handler => fun handle_rfid_reading/2
+    },
+    {ok, RFID} = rfid:start(RFIDConfig),
+    io:format("RFID started.~n"),
+
     %%
     %% Start the network
     %%
@@ -26,14 +34,17 @@ start() ->
     %%
     %% Start the MQTT client.
     %%
-    Config = #{
+    MQTTConfig = #{
         url => maps:get(url, config:get()),
         username => maps:get(username, config:get()),
         password => maps:get(password, config:get()),
         connected_handler => fun handle_connected/1
     },
-    {ok, _MQTT} = mqtt_client:start(Config),
+    {ok, MQTT} = mqtt_client:start(MQTTConfig),
     io:format("MQTT started.~n"),
+
+    {ok, _} = variables:start({MQTT, RFID}),
+    io:format("Variables started.~n"),
 
     loop_forever().
 
@@ -74,5 +85,13 @@ handle_subscribed(MQTT, SubscribeTopic) ->
 
 handle_data(MQTT, SubscribeTopic, Data) ->
     io:format("Received data on topic ~p: ~p ~n", [SubscribeTopic, Data]),
-    PublishTopic = list_to_binary("reports/" ++ maps:get(clientid, config:get())),
+    RFID = variables:get_rfid(),
+    io:format("Latest reading ~p ~n", [rfid:latest_reading(RFID)]),
+    PublishTopic = list_to_binary("echo/" ++ maps:get(clientid, config:get())),
     _ = mqtt_client:publish(MQTT, PublishTopic, Data).
+
+handle_rfid_reading(_RFID, RFIDReading) ->
+    MQTT = variables:get_mqtt(),
+    io:format("Send ~p ~n", [term_to_binary(RFIDReading)]),
+    PublishTopic = list_to_binary("reports/" ++ maps:get(clientid, config:get())),
+    _ = mqtt_client:publish(MQTT, PublishTopic, term_to_binary(RFIDReading)).
