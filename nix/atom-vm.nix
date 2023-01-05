@@ -10,16 +10,16 @@ let
     sha256 = "jjtpteX6Dw8PNe5ws9IQhoeA+zY/yl4f7OI2n168tfg=";
   };
   rc522 = fetchFromGitHub {
-    owner = "abobija";
-    repo = "esp-idf-rc522";
-    rev = "a680175675256f192e0de943a4170f4ccabe877d";
-    sha256 = "i6USspAfHAwnu467LG0WbkrFiyuiXacXWFfPV0+tE6A=";
+    owner = "koppe-pan";
+    repo = "rc522_for_esp32";
+    rev = "ab274495668df5d44de991603f947e483273a991";
+    sha256 = "T6gtydz7UAhh9NPKrlOpOR55RuQvaqchbIuQAgfG89Y=";
   };
   atomvm_rfid = fetchFromGitHub {
     owner = "koppe-pan";
     repo = "atomvm_rfid";
-    rev = "6e1c74f3e0f6e6efc3304b037862a79f6be5f282";
-    sha256 = "Lk1w/SyUofkUYbZXz7Qk7VV8vUn/2tlTAoM3RJ9gV6Y=";
+    rev = "f2cb87fc72a6286e7ae33ed46fca4d105b3d5cdd";
+    sha256 = "Xm8BqiO1vYlroy9PMiBjOXkqXX3qqO8AtaO3xsG1k38=";
   };
 in
 stdenv.mkDerivation rec {
@@ -50,12 +50,13 @@ stdenv.mkDerivation rec {
     cp -avr ${atomvm_mqtt_client}/* $out/lib/src/platforms/esp32/components/atomvm_mqtt_client/
 
     mkdir -p $out/lib/src/platforms/esp32/components/rc522
-    rm -rf $out/lib/src/platforms/esp32/components/rc522/*
-    cp -avr ${../../rc522}/* $out/lib/src/platforms/esp32/components/rc522/
+    #rm -rf $out/lib/src/platforms/esp32/components/rc522/*
+    #cp -avr ${../../rc522}/* $out/lib/src/platforms/esp32/components/rc522/
+    cp -avr ${rc522}/* $out/lib/src/platforms/esp32/components/rc522/
 
     mkdir -p $out/lib/src/platforms/esp32/components/atomvm_rfid
-    cp -avr ${../../atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
-    #cp -avr ${atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
+    #cp -avr ${../../atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
+    cp -avr ${atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
   '';
 
   buildPhase = ''

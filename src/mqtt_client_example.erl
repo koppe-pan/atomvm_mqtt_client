@@ -21,7 +21,7 @@
 start() ->
 
     RFIDConfig = #{
-        rfid_reading_filter => [serial_nu],
+        rfid_reading_filter => undefined,
         rfid_reading_handler => fun handle_rfid_reading/2
     },
     {ok, RFID} = rfid:start(RFIDConfig),
@@ -70,28 +70,45 @@ loop_forever() ->
 %%
 handle_connected(MQTT) ->
     Config = mqtt_client:get_config(MQTT),
-    SubscribeTopic = list_to_binary("commands/" ++ maps:get(clientid, config:get()) ++ "/set_interval"),
     io:format("Connected to ~p~n", [maps:get(url, Config)]),
-    io:format("Subscribing to ~p...~n", [SubscribeTopic]),
-    ok = mqtt_client:subscribe(MQTT, SubscribeTopic, #{
+    PublishTopic = list_to_binary("register/" ++ maps:get(clientid, config:get())),
+    _ = mqtt_client:publish(MQTT, PublishTopic, maps:get(clientid, config:get())),
+
+    SubscribeTopicForEnableWrite = list_to_binary("commands/" ++ maps:get(clientid, config:get()) ++ "/enable_write"),
+    io:format("Subscribing to ~p...~n", [SubscribeTopicForEnableWrite]),
+    ok = mqtt_client:subscribe(MQTT, SubscribeTopicForEnableWrite, #{
         subscribed_handler => fun handle_subscribed/2,
-        data_handler => fun handle_data/3
+        data_handler => fun handle_data_for_enable_write/3
+    }),
+    SubscribeTopicForDisableWrite = list_to_binary("commands/" ++ maps:get(clientid, config:get()) ++ "/disable_write"),
+    io:format("Subscribing to ~p...~n", [SubscribeTopicForDisableWrite]),
+    ok = mqtt_client:subscribe(MQTT, SubscribeTopicForDisableWrite, #{
+        subscribed_handler => fun handle_subscribed/2,
+        data_handler => fun handle_data_for_disable_write/3
     }).
 
-handle_subscribed(MQTT, SubscribeTopic) ->
-    io:format("Subscribed to ~p.~n", [SubscribeTopic]),
-    PublishTopic = list_to_binary("register/" ++ maps:get(clientid, config:get())),
-    _ = mqtt_client:publish(MQTT, PublishTopic, maps:get(clientid, config:get())).
+handle_subscribed(_MQTT, SubscribeTopic) ->
+    io:format("Subscribed to ~p.~n", [SubscribeTopic]).
 
-handle_data(MQTT, SubscribeTopic, Data) ->
+handle_data_for_enable_write(MQTT, SubscribeTopic, Data) ->
     io:format("Received data on topic ~p: ~p ~n", [SubscribeTopic, Data]),
     RFID = variables:get_rfid(),
-    io:format("Latest reading ~p ~n", [rfid:latest_reading(RFID)]),
-    PublishTopic = list_to_binary("echo/" ++ maps:get(clientid, config:get())),
-    _ = mqtt_client:publish(MQTT, PublishTopic, Data).
+    rfid:enable_write_mode(RFID, binary_to_integer(Data)),
+    RFIDReading = rfid:latest_reading(RFID),
+    io:format("Latest reading ~p ~n", [RFIDReading]),
+    PublishTopic = list_to_binary("reports/" ++ maps:get(clientid, config:get())),
+    _ = mqtt_client:publish(MQTT, PublishTopic, term_to_binary(RFIDReading)).
+
+handle_data_for_disable_write(MQTT, SubscribeTopic, Data) ->
+    io:format("Received data on topic ~p: ~p ~n", [SubscribeTopic, Data]),
+    RFID = variables:get_rfid(),
+    rfid:disable_write_mode(RFID),
+    RFIDReading = rfid:latest_reading(RFID),
+    io:format("Latest reading ~p ~n", [RFIDReading]),
+    PublishTopic = list_to_binary("reports/" ++ maps:get(clientid, config:get())),
+    _ = mqtt_client:publish(MQTT, PublishTopic, term_to_binary(RFIDReading)).
 
 handle_rfid_reading(_RFID, RFIDReading) ->
     MQTT = variables:get_mqtt(),
-    io:format("Send ~p ~n", [term_to_binary(RFIDReading)]),
     PublishTopic = list_to_binary("reports/" ++ maps:get(clientid, config:get())),
     _ = mqtt_client:publish(MQTT, PublishTopic, term_to_binary(RFIDReading)).
