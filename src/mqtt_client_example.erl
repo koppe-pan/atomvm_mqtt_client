@@ -18,6 +18,25 @@
 
 -export([start/0]).
 
+-include("ledc.hrl").
+
+-define(LEDC_LS_TIMER, ?LEDC_TIMER_0).
+-define(LEDC_LS_MODE, ?LEDC_HIGH_SPEED_MODE).
+-define(LEDC_LS_CH0_GPIO, 14).
+-define(LEDC_LS_CH0_CHANNEL, ?LEDC_CHANNEL_0).
+-define(LEDC_LS_CH1_GPIO, 26).
+-define(LEDC_LS_CH1_CHANNEL, ?LEDC_CHANNEL_1).
+-define(LEDC_LS_CH2_GPIO, 25).
+-define(LEDC_LS_CH2_CHANNEL, ?LEDC_CHANNEL_2).
+-define(LEDC_LS_CH3_GPIO, 33).
+-define(LEDC_LS_CH3_CHANNEL, ?LEDC_CHANNEL_3).
+-define(LEDC_DUTY, 3000).
+-define(LEDC_FADE_TIME, 100).
+-define(LEDC_IDLE_TIME, 80).
+-define(SAMPLING_RATE, 22050).
+
+
+
 start() ->
 
     RFIDConfig = #{
@@ -26,6 +45,47 @@ start() ->
     },
     {ok, RFID} = rfid:start(RFIDConfig),
     io:format("RFID started.~n"),
+
+
+    LEDCLSTimer = [
+        {duty_resolution, ?LEDC_TIMER_13_BIT},
+        {freq_hz, 1000},
+        {speed_mode, ?LEDC_LS_MODE},
+        {timer_num, ?LEDC_LS_TIMER}
+    ],
+    ok = ledc:timer_config(LEDCLSTimer),
+    ChannelConfig = #{ buzzer => [{channel, ?LEDC_LS_CH0_CHANNEL},
+                                  {duty, 0},
+                                  {gpio_num, ?LEDC_LS_CH0_GPIO},
+                                  {speed_mode, ?LEDC_LS_MODE},
+                                  {hpoint, 0},
+                                  {timer_sel, ?LEDC_LS_TIMER}
+                                 ],
+                       red => [{channel, ?LEDC_LS_CH1_CHANNEL},
+                                  {duty, 0},
+                                  {gpio_num, ?LEDC_LS_CH1_GPIO},
+                                  {speed_mode, ?LEDC_LS_MODE},
+                                  {hpoint, 0},
+                                  {timer_sel, ?LEDC_LS_TIMER}
+                                 ],
+                       blue => [{channel, ?LEDC_LS_CH2_CHANNEL},
+                                  {duty, 0},
+                                  {gpio_num, ?LEDC_LS_CH2_GPIO},
+                                  {speed_mode, ?LEDC_LS_MODE},
+                                  {hpoint, 0},
+                                  {timer_sel, ?LEDC_LS_TIMER}
+                                 ],
+                       green => [{channel, ?LEDC_LS_CH3_CHANNEL},
+                                  {duty, 0},
+                                  {gpio_num, ?LEDC_LS_CH3_GPIO},
+                                  {speed_mode, ?LEDC_LS_MODE},
+                                  {hpoint, 0},
+                                  {timer_sel, ?LEDC_LS_TIMER}
+                                 ]
+                     },
+    lists:foreach(fun(Value) -> ledc:channel_config(Value) end, maps:values(ChannelConfig)),
+    ok = ledc:fade_func_install(0),
+    io:format("LEDC started.~n"),
 
     %%
     %% Start the network
@@ -43,7 +103,7 @@ start() ->
     {ok, MQTT} = mqtt_client:start(MQTTConfig),
     io:format("MQTT started.~n"),
 
-    {ok, _} = variables:start({MQTT, RFID}),
+    {ok, _} = variables:start({MQTT, RFID, ChannelConfig}),
     io:format("Variables started.~n"),
 
     loop_forever().
@@ -111,4 +171,37 @@ handle_data_for_disable_write(MQTT, SubscribeTopic, Data) ->
 handle_rfid_reading(_RFID, RFIDReading) ->
     MQTT = variables:get_mqtt(),
     PublishTopic = list_to_binary("reports/" ++ maps:get(clientid, config:get())),
-    _ = mqtt_client:publish(MQTT, PublishTopic, term_to_binary(RFIDReading)).
+    _ = mqtt_client:publish(MQTT, PublishTopic, term_to_binary(RFIDReading)),
+    LEDCChannel = variables:get_ledc(),
+    Buzzer = maps:get(buzzer, LEDCChannel),
+    SpeedMode = proplists:get_value(speed_mode, Buzzer),
+    Channel = proplists:get_value(channel, Buzzer),
+    ok = ledc:set_fade_with_time(SpeedMode, Channel, ?LEDC_DUTY, ?LEDC_FADE_TIME),
+    ok = ledc:fade_start(SpeedMode, Channel, ?LEDC_FADE_NO_WAIT),
+    timer:sleep(?LEDC_FADE_TIME),
+    ok = ledc:stop(SpeedMode, Channel, 0),
+    LED = case maps:get(clientid, config:get()) of
+      "red" -> maps:get(red, LEDCChannel);
+      "green" -> maps:get(green, LEDCChannel);
+      "yellow" -> maps:get(blue, LEDCChannel)
+    end,
+    LEDSpeedMode = proplists:get_value(speed_mode, LED),
+    LEDChannel = proplists:get_value(channel, LED),
+    ok = ledc:set_fade_with_time(LEDSpeedMode, LEDChannel, ?LEDC_DUTY, ?LEDC_FADE_TIME),
+    ok = ledc:fade_start(LEDSpeedMode, LEDChannel, ?LEDC_FADE_NO_WAIT),
+    timer:sleep(?LEDC_IDLE_TIME),
+    ok = ledc:stop(LEDSpeedMode, LEDChannel, 0),
+    ok = ledc:set_fade_with_time(SpeedMode, Channel, ?LEDC_DUTY, ?LEDC_FADE_TIME),
+    ok = ledc:fade_start(SpeedMode, Channel, ?LEDC_FADE_NO_WAIT),
+    timer:sleep(?LEDC_FADE_TIME),
+    ok = ledc:stop(SpeedMode, Channel, 0).
+%    {ok, S} = file:open("../star.raw", [read, binary, raw]),
+%    ok = ledc:set_fade_with_time(SpeedMode, Channel, ?LEDC_DUTY, 3000),
+%    ok = ledc:fade_start(SpeedMode, Channel, ?LEDC_FADE_NO_WAIT),
+%    play_music(S, SpeedMode, Channel, 0),
+%    timer:sleep(3000),
+%    file:close(S),
+%    ok = ledc:stop(SpeedMode, Channel, 0).
+%
+%play_music(S, SpeedMode, Channel, N) ->
+%    file:pread(S, N, N+1),

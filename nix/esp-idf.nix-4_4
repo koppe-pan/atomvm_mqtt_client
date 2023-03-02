@@ -1,0 +1,56 @@
+{ pkgs, fetchFromGitHub, stdenv, lib }:
+let
+  python_env = pkgs.callPackage ./python-env.nix {};
+  esp-idf-v4_4 = fetchFromGitHub {
+    owner = "espressif";
+    repo = "esp-idf";
+    rev = "v4.4";
+    fetchSubmodules = true;
+    sha256 = "LQksHhdEMDFZbmVxQNh321+37oKPbFEySUgu2xwm/to=";
+  };
+in
+stdenv.mkDerivation rec {
+  name = "esp-idf";
+  nativeBuildInputs = [ pkgs.makeWrapper ];
+
+  buildInputs = with pkgs; [
+    ninja
+    cmake
+    ccache
+    dfu-util
+  ];
+
+  src = fetchFromGitHub {
+    owner = "espressif";
+    repo = "esp-idf";
+    rev = "v4.2";
+    fetchSubmodules = true;
+    sha256 = "0h60xnxny0q4m3mqa1ghr2144j0cn6wb7mg3nyn31im3dwclf68h";
+  };
+
+  dontBuild = true;
+
+  configurePhase = ''
+    mkdir -p $out/lib
+    mv * $out/lib/
+    #mkdir -p $out/lib/components/driver_4_4
+    #cp -avr ${esp-idf-v4_4}/components/driver/* $out/lib/components/driver_4_4/
+  '';
+
+  installPhase = ''
+    makeWrapper ${python_env}/bin/python $out/bin/idf.py \
+    --add-flags $out/lib/tools/idf.py \
+    --set IDF_PATH $out/lib \
+    --prefix PATH : "${lib.makeBinPath buildInputs}"
+    makeWrapper ${python_env}/bin/python $out/bin/esptool.py \
+    --add-flags $out/lib/tools/idf.py \
+    --set IDF_PATH $out/lib \
+    --prefix PATH : "${lib.makeBinPath buildInputs}"
+  '';
+
+  ESP_IDF_HOME = "$out";
+  shellHook = ''
+    export IDF_PATH=${ESP_IDF_HOME}/lib
+    export IDF_PYTHON_ENV_PATH=${python_env}/bin/python
+  '';
+}

@@ -18,12 +18,11 @@ let
   atomvm_rfid = fetchFromGitHub {
     owner = "koppe-pan";
     repo = "atomvm_rfid";
-    rev = "f2cb87fc72a6286e7ae33ed46fca4d105b3d5cdd";
-    sha256 = "Xm8BqiO1vYlroy9PMiBjOXkqXX3qqO8AtaO3xsG1k38=";
+    rev = "982e1d098c86bd0ba48181f14095f45272f89820";
+    sha256 = "iYxL1kbPzOO3o3rbkTIAZFQ9tzVUp43gD1o2XTjcomM=";
   };
 in
-stdenv.mkDerivation rec {
-  name = "atom-vm";
+stdenv.mkDerivation rec { name = "atom-vm";
   nativeBuildInputs = [ pkgs.makeWrapper ];
 
   buildInputs = with pkgs; [
@@ -51,12 +50,12 @@ stdenv.mkDerivation rec {
 
     mkdir -p $out/lib/src/platforms/esp32/components/rc522
     #rm -rf $out/lib/src/platforms/esp32/components/rc522/*
-    #cp -avr ${../../rc522}/* $out/lib/src/platforms/esp32/components/rc522/
-    cp -avr ${rc522}/* $out/lib/src/platforms/esp32/components/rc522/
+    cp -avr ${../../rc522}/* $out/lib/src/platforms/esp32/components/rc522/
+    #cp -avr ${rc522}/* $out/lib/src/platforms/esp32/components/rc522/
 
     mkdir -p $out/lib/src/platforms/esp32/components/atomvm_rfid
-    #cp -avr ${../../atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
-    cp -avr ${atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
+    cp -avr ${../../atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
+    #cp -avr ${atomvm_rfid}/* $out/lib/src/platforms/esp32/components/atomvm_rfid/
   '';
 
   buildPhase = ''
